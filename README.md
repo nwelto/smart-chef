@@ -1,4 +1,4 @@
-# Smart Chef 🍳
+# Smart Chef 
 
 AI-powered recipe generation app that creates personalized recipes based on the ingredients you have at home.
 
