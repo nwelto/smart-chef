@@ -48,7 +48,7 @@ export default async function Home() {
         <div className="w-full md:w-1/2 flex flex-col justify-center px-4 sm:px-6 md:px-16 pt-24 sm:pt-32 pb-12 sm:pb-16 md:py-0">
           <div className="md:ml-12 lg:ml-20">
             <p className="label text-xs sm:text-sm mb-3 sm:mb-4">AI-Powered Recipe Generation</p>
-            <h1 className="font-black uppercase leading-[0.9] tracking-tight text-[clamp(3rem,12vw,10rem)] mb-6 sm:mb-8">
+            <h1 className="heading-xl mb-6 sm:mb-8">
               Cook
               <br />
               with what
