@@ -48,12 +48,10 @@ export default async function Home() {
         <div className="w-full md:w-1/2 flex flex-col justify-center px-4 sm:px-6 md:px-16 pt-24 sm:pt-32 pb-12 sm:pb-16 md:py-0">
           <div className="md:ml-12 lg:ml-20">
             <p className="label text-xs sm:text-sm mb-3 sm:mb-4">AI-Powered Recipe Generation</p>
-            <h1 className="heading-xl mb-6 sm:mb-8">
-              Cook
-              <br />
-              with what
-              <br />
-              you <span className="text-accent">have</span>
+            <h1 className="font-extrabold uppercase leading-[0.9] tracking-tight text-[clamp(2.5rem,12vw,5rem)] md:text-[clamp(2rem,5vw,4.5rem)] lg:text-[clamp(2.5rem,6vw,7rem)] mb-6 sm:mb-8">
+              Cook<br />
+              <span className="whitespace-nowrap">with what</span><br />
+              <span className="whitespace-nowrap">you <span className="text-accent">have</span></span>
             </h1>
             <p className="text-muted max-w-md text-base sm:text-lg mb-8 sm:mb-10">
               Enter the ingredients in your kitchen. Select your spices. 

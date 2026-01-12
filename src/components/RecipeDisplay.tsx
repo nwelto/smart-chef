@@ -55,7 +55,7 @@ export function RecipeDisplay({ recipe, onSave, onNewRecipe, saving, saved }: Re
         <div>
           <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Ingredients</h3>
           <ul className="space-y-3 sm:space-y-4">
-            {recipe.ingredients.map((ing, index) => (
+            {(recipe.ingredients || []).map((ing, index) => (
               <li key={index} className="flex gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-border text-sm sm:text-base">
                 <span className="font-bold text-accent shrink-0 w-16 sm:w-24">{ing.amount}</span>
                 <span>
@@ -70,7 +70,7 @@ export function RecipeDisplay({ recipe, onSave, onNewRecipe, saving, saved }: Re
         <div>
           <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Instructions</h3>
           <ol className="space-y-4 sm:space-y-6">
-            {recipe.instructions.map((step, index) => (
+            {(recipe.instructions || []).map((step, index) => (
               <li key={index} className="flex gap-3 sm:gap-4">
                 <span className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-foreground text-background text-sm sm:text-base font-bold flex items-center justify-center">
                   {index + 1}

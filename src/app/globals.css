@@ -115,7 +115,7 @@ body {
 }
 
 .heading-xl {
-  font-size: clamp(3rem, 10vw, 8rem);
+  font-size: clamp(2.5rem, 9vw, 7rem);
   font-weight: 800;
   line-height: 0.9;
   letter-spacing: -0.03em;
