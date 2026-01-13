@@ -1,31 +1,32 @@
 import OpenAI from "openai";
 import type { GenerateRecipeResponse } from "./types";
 
-const RECIPE_PROMPT = `You are a professional chef assistant. Generate a delicious recipe.
+const RECIPE_PROMPT = `You are a professional chef assistant. Generate a recipe using ONLY the ingredients provided.
 
-MAIN INGREDIENTS (the user has these - try to use ALL of them):
+INGREDIENTS (use ONLY these - do NOT add anything else):
 {ingredients}
 
-AVAILABLE SEASONINGS (oils, spices, sauces the user has - pick the BEST ones for this dish, not all):
+AVAILABLE SEASONINGS (optional - use only if they complement the dish):
 {spices}
 
-REQUIREMENTS:
-- Try to incorporate ALL the main ingredients listed above
-- From the seasonings list, pick only what makes sense for the dish (don't use everything)
-- Use ingredients EXACTLY as listed (if they say "tomatoes" use fresh tomatoes, not canned)
-- You may add basic pantry items like water, salt, pepper if not listed
-- Include exact measurements
-- Provide clear step-by-step instructions
-- Estimate prep time, cook time, and servings
-- Keep it practical and delicious
+STRICT RULES:
+- Use ONLY the ingredients listed above - do NOT add eggs, milk, butter, or ANY other ingredients
+- Do NOT invent or substitute ingredients - if the user gives you peanut butter, jelly, and bread, make a PB&J
+- Calculate REALISTIC prep and cook times based on the actual recipe:
+  - A sandwich or no-cook dish: prep_time 2-5 minutes, cook_time 0
+  - A simple stir-fry: prep_time 10 minutes, cook_time 10 minutes
+  - A slow-cooked dish: prep_time 15 minutes, cook_time 120+ minutes
+- If no cooking/heating is required, set cook_time_minutes to 0
+- Keep the recipe simple and true to the ingredients provided
+- Include exact measurements for the ingredients you use
 
 RESPOND ONLY WITH VALID JSON IN THIS EXACT FORMAT:
 {
   "title": "Recipe Name",
   "description": "Brief 1-2 sentence description",
-  "servings": 4,
-  "prep_time_minutes": 15,
-  "cook_time_minutes": 30,
+  "servings": <number based on ingredients>,
+  "prep_time_minutes": <realistic time based on recipe complexity>,
+  "cook_time_minutes": <0 if no cooking, otherwise realistic time>,
   "difficulty": "easy",
   "ingredients": [
     {"item": "ingredient name", "amount": "1 cup", "note": "optional note"}
@@ -49,7 +50,7 @@ export async function generateRecipe(
 
   const prompt = RECIPE_PROMPT
     .replace("{ingredients}", ingredients.join(", "))
-    .replace("{spices}", spices.length > 0 ? spices.join(", ") : "None specified - use basic seasonings");
+    .replace("{spices}", spices.length > 0 ? spices.join(", ") : "None provided");
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4o",
@@ -60,7 +61,7 @@ export async function generateRecipe(
       },
     ],
     response_format: { type: "json_object" },
-    temperature: 0.7,
+    temperature: 0.3,
   });
 
   const content = completion.choices[0].message.content;
