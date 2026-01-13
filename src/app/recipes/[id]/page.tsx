@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
+import { AddToListButton } from "@/components/AddToListButton";
 import { createClient } from "@/lib/supabase/client";
 import type { Recipe } from "@/lib/types";
 
@@ -149,6 +150,16 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
           >
             {recipe.is_family_favorite ? "♥ Family" : "♡ Family"}
           </button>
+          <AddToListButton
+            items={(recipe.ingredients || []).map(ing => ({
+              item: ing.item,
+              amount: ing.amount,
+              category: "Other",
+            }))}
+            sourceId={recipe.id}
+            sourceType="recipe"
+            className="text-[10px] sm:text-xs"
+          />
         </div>
 
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-4 sm:gap-8 mb-8 sm:mb-12 py-4 sm:py-6 border-y border-border">

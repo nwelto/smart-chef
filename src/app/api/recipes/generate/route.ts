@@ -11,7 +11,16 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { ingredients, spices } = body;
+  const { 
+    ingredients, 
+    spices, 
+    dietary, 
+    style,
+    dislikedIngredients,
+    cuisinePreferences,
+    kitchenEquipment,
+    budgetMode,
+  } = body;
 
   if (!ingredients || ingredients.length < 2) {
     return NextResponse.json(
@@ -21,7 +30,18 @@ export async function POST(request: Request) {
   }
 
   try {
-    const recipe = await generateRecipe(ingredients, spices || []);
+    const recipe = await generateRecipe(
+      ingredients, 
+      spices || [], 
+      dietary || [],
+      style || "Any style - chef's choice",
+      {
+        dislikedIngredients: dislikedIngredients || [],
+        cuisinePreferences: cuisinePreferences || [],
+        kitchenEquipment: kitchenEquipment || [],
+        budgetMode: budgetMode || false,
+      }
+    );
     return NextResponse.json(recipe);
   } catch (error) {
     console.error("Recipe generation error:", error);

@@ -27,8 +27,14 @@ export default async function Home() {
               <Link href="/generate" className="btn-secondary text-[10px] sm:text-xs px-2 sm:px-4 py-1.5 sm:py-2">
                 Generate
               </Link>
+              <Link href="/plan" className="btn-secondary text-[10px] sm:text-xs px-2 sm:px-4 py-1.5 sm:py-2">
+                Plan
+              </Link>
+              <Link href="/calendar" className="btn-secondary text-[10px] sm:text-xs px-2 sm:px-4 py-1.5 sm:py-2 hidden sm:inline-block">
+                Calendar
+              </Link>
               <Link href="/recipes" className="btn-primary text-[10px] sm:text-xs px-2 sm:px-4 py-1.5 sm:py-2">
-                Recipes
+                Dashboard
               </Link>
             </>
           ) : (
@@ -57,13 +63,21 @@ export default async function Home() {
               Enter the ingredients in your kitchen. Select your spices. 
               Get a delicious recipe tailored just for you.
             </p>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <Link
                 href={user ? "/generate" : "/signup"}
                 className="btn-primary text-sm sm:text-base"
               >
                 {user ? "Generate Recipe" : "Get Started"}
               </Link>
+              {user && (
+                <Link
+                  href="/plan"
+                  className="btn-secondary text-sm sm:text-base"
+                >
+                  Plan My Week →
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -141,6 +155,147 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Features Grid - Main Tools */}
+      <section className="py-16 sm:py-24 md:py-32 px-4 sm:px-6 md:px-16">
+        <div className="max-w-7xl mx-auto">
+          <p className="label text-xs sm:text-sm mb-3 sm:mb-4">Your Kitchen Tools</p>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight mb-10 sm:mb-16">
+            Everything you need
+            <br />
+            <span className="text-accent">in one place</span>
+          </h2>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {/* Quick Recipe */}
+            <Link href={user ? "/generate" : "/signup"} className="group border border-border hover:border-accent p-6 sm:p-8 transition-all hover:bg-card">
+              <span className="text-4xl sm:text-5xl mb-4 block">🍳</span>
+              <h3 className="text-xl sm:text-2xl font-bold mb-2 group-hover:text-accent transition-colors">Quick Recipe</h3>
+              <p className="text-muted text-sm sm:text-base mb-4">
+                Enter ingredients you have and get a recipe instantly. Perfect for using up what&apos;s in your fridge.
+              </p>
+              <span className="text-accent text-sm font-bold uppercase tracking-wider">Generate →</span>
+            </Link>
+
+            {/* Meal Plan Wizard */}
+            <Link href={user ? "/plan" : "/signup"} className="group border border-border hover:border-accent p-6 sm:p-8 transition-all hover:bg-card">
+              <span className="text-4xl sm:text-5xl mb-4 block">📅</span>
+              <h3 className="text-xl sm:text-2xl font-bold mb-2 group-hover:text-accent transition-colors">Meal Plan Wizard</h3>
+              <p className="text-muted text-sm sm:text-base mb-4">
+                Plan your week with a step-by-step wizard. Get full recipes, grocery lists, and prep instructions.
+              </p>
+              <span className="text-accent text-sm font-bold uppercase tracking-wider">Start Planning →</span>
+            </Link>
+
+            {/* Meal Calendar */}
+            <Link href={user ? "/calendar" : "/signup"} className="group border border-border hover:border-accent p-6 sm:p-8 transition-all hover:bg-card">
+              <span className="text-4xl sm:text-5xl mb-4 block">🗓️</span>
+              <h3 className="text-xl sm:text-2xl font-bold mb-2 group-hover:text-accent transition-colors">Meal Calendar</h3>
+              <p className="text-muted text-sm sm:text-base mb-4">
+                Schedule meals on your weekly calendar. Drag recipes onto days and see your whole week at a glance.
+              </p>
+              <span className="text-accent text-sm font-bold uppercase tracking-wider">View Calendar →</span>
+            </Link>
+
+            {/* Shopping List */}
+            <Link href={user ? "/shopping" : "/signup"} className="group border border-border hover:border-accent p-6 sm:p-8 transition-all hover:bg-card">
+              <span className="text-4xl sm:text-5xl mb-4 block">🛒</span>
+              <h3 className="text-xl sm:text-2xl font-bold mb-2 group-hover:text-accent transition-colors">Shopping List</h3>
+              <p className="text-muted text-sm sm:text-base mb-4">
+                Aggregate ingredients from recipes and meal plans. Check items off as you shop.
+              </p>
+              <span className="text-accent text-sm font-bold uppercase tracking-wider">View List →</span>
+            </Link>
+
+            {/* Saved Recipes */}
+            <Link href={user ? "/recipes" : "/signup"} className="group border border-border hover:border-accent p-6 sm:p-8 transition-all hover:bg-card">
+              <span className="text-4xl sm:text-5xl mb-4 block">📖</span>
+              <h3 className="text-xl sm:text-2xl font-bold mb-2 group-hover:text-accent transition-colors">My Recipes</h3>
+              <p className="text-muted text-sm sm:text-base mb-4">
+                Access all your saved recipes. Mark favorites and family favorites for quick access.
+              </p>
+              <span className="text-accent text-sm font-bold uppercase tracking-wider">View Recipes →</span>
+            </Link>
+
+            {/* Diet Profile */}
+            <Link href={user ? "/settings/diet" : "/signup"} className="group border border-border hover:border-accent p-6 sm:p-8 transition-all hover:bg-card">
+              <span className="text-4xl sm:text-5xl mb-4 block">⚙️</span>
+              <h3 className="text-xl sm:text-2xl font-bold mb-2 group-hover:text-accent transition-colors">Diet Profile</h3>
+              <p className="text-muted text-sm sm:text-base mb-4">
+                Set your dietary preferences once. They&apos;ll auto-apply to every recipe you generate.
+              </p>
+              <span className="text-accent text-sm font-bold uppercase tracking-wider">Set Up →</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Meal Prep Highlight */}
+      <section className="py-16 sm:py-24 md:py-32 px-4 sm:px-6 md:px-16 bg-accent/10 border-y border-accent/20">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-8 sm:gap-12 items-center">
+            <div>
+              <p className="label text-xs sm:text-sm mb-3 sm:mb-4 text-accent">Meal Prep Made Easy</p>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight mb-6 sm:mb-8">
+                Plan your entire
+                <br />
+                <span className="text-accent">week in minutes</span>
+              </h2>
+              <p className="text-muted text-base sm:text-lg mb-6 sm:mb-8">
+                Our Meal Plan Wizard helps you create complete meal prep plans with:
+              </p>
+              <ul className="space-y-3 text-sm sm:text-base mb-8">
+                <li className="flex items-center gap-3">
+                  <span className="text-accent">✓</span>
+                  <span>Freezer burritos, dinner plans, lunch prep & more</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="text-accent">✓</span>
+                  <span>Full recipes with ingredients and instructions</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="text-accent">✓</span>
+                  <span>Complete grocery list organized by category</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="text-accent">✓</span>
+                  <span>Step-by-step prep instructions</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <span className="text-accent">✓</span>
+                  <span>Macros for every meal</span>
+                </li>
+              </ul>
+              <Link href={user ? "/plan" : "/signup"} className="btn-primary text-sm sm:text-base">
+                Start Meal Planning →
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-card border border-border p-4 sm:p-6">
+                <span className="text-3xl mb-2 block">🌯</span>
+                <p className="font-bold">Freezer Burritos</p>
+                <p className="text-xs text-muted">Make-ahead grab & go</p>
+              </div>
+              <div className="bg-card border border-border p-4 sm:p-6">
+                <span className="text-3xl mb-2 block">🍽️</span>
+                <p className="font-bold">Dinner Plan</p>
+                <p className="text-xs text-muted">Family dinners for the week</p>
+              </div>
+              <div className="bg-card border border-border p-4 sm:p-6">
+                <span className="text-3xl mb-2 block">🥗</span>
+                <p className="font-bold">Lunch Prep</p>
+                <p className="text-xs text-muted">Portioned work lunches</p>
+              </div>
+              <div className="bg-card border border-border p-4 sm:p-6">
+                <span className="text-3xl mb-2 block">🍳</span>
+                <p className="font-bold">Breakfast Prep</p>
+                <p className="text-xs text-muted">Quick morning meals</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Gallery */}
       <section className="py-16 sm:py-24 md:py-32 px-4 sm:px-6 md:px-16">
         <div className="max-w-7xl mx-auto grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
           <div className="relative aspect-[4/3] sm:aspect-[3/4] group overflow-hidden">

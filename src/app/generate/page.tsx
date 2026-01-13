@@ -1,23 +1,48 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { IngredientInput } from "@/components/IngredientInput";
 import { SpiceSelector } from "@/components/SpiceSelector";
 import { RecipeDisplay } from "@/components/RecipeDisplay";
 import { createClient } from "@/lib/supabase/client";
-import type { Spice, GenerateRecipeResponse } from "@/lib/types";
+import type { Spice, GenerateRecipeResponse, DietProfile } from "@/lib/types";
+
+const DIETARY_OPTIONS = [
+  "Gluten-Free",
+  "Dairy-Free",
+  "Egg-Free",
+  "Nut-Free",
+  "Vegetarian",
+  "Vegan",
+  "Keto",
+  "Low-Carb",
+];
+
+const STYLE_OPTIONS = [
+  { label: "Chef's Choice", value: "Any style - chef's choice" },
+  { label: "High Protein", value: "High protein meal - maximize protein content, ideal for meal prep" },
+  { label: "Quick & Easy", value: "Quick and easy - under 30 minutes, minimal prep" },
+  { label: "Meal Prep", value: "Meal prep friendly - stores well, easy to portion for the week" },
+  { label: "Comfort Food", value: "Comfort food - hearty, satisfying, homestyle cooking" },
+  { label: "Light & Healthy", value: "Light and healthy - lower calorie, nutrient-dense" },
+];
 
 export default function GeneratePage() {
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [selectedSpices, setSelectedSpices] = useState<string[]>([]);
   const [spices, setSpices] = useState<Spice[]>([]);
+  const [dietary, setDietary] = useState<string[]>([]);
+  const [style, setStyle] = useState("Any style - chef's choice");
   const [recipe, setRecipe] = useState<GenerateRecipeResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [userEmail, setUserEmail] = useState<string>();
+  const [dietProfile, setDietProfile] = useState<DietProfile | null>(null);
+  const [useDietProfile, setUseDietProfile] = useState(true);
   const supabase = createClient();
 
   useEffect(() => {
@@ -27,10 +52,22 @@ export default function GeneratePage() {
         setUserEmail(user.email);
       }
 
-      const res = await fetch("/api/spices");
-      if (res.ok) {
-        const data = await res.json();
+      // Load spices
+      const spicesRes = await fetch("/api/spices");
+      if (spicesRes.ok) {
+        const data = await spicesRes.json();
         setSpices(data);
+      }
+
+      // Load diet profile
+      const profileRes = await fetch("/api/diet-profile");
+      if (profileRes.ok) {
+        const profile = await profileRes.json();
+        if (profile.dietary_restrictions?.length > 0 || profile.disliked_ingredients?.length > 0) {
+          setDietProfile(profile);
+          // Pre-fill dietary from profile
+          setDietary(profile.dietary_restrictions || []);
+        }
       }
     }
     init();
@@ -53,6 +90,13 @@ export default function GeneratePage() {
       body: JSON.stringify({
         ingredients,
         spices: selectedSpices,
+        dietary,
+        style,
+        // Include diet profile data if enabled
+        dislikedIngredients: useDietProfile && dietProfile ? dietProfile.disliked_ingredients : [],
+        cuisinePreferences: useDietProfile && dietProfile ? dietProfile.cuisine_preferences : [],
+        kitchenEquipment: useDietProfile && dietProfile ? dietProfile.kitchen_equipment : [],
+        budgetMode: useDietProfile && dietProfile ? dietProfile.budget_mode : false,
       }),
     });
 
@@ -129,6 +173,84 @@ export default function GeneratePage() {
                   />
                 </div>
               )}
+
+              <div className="pb-8 sm:pb-12 border-b border-border">
+                <label className="label text-xs sm:text-sm block mb-4">Recipe Style</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {STYLE_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setStyle(option.value)}
+                      className={`px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium border-2 transition-all ${
+                        style === option.value
+                          ? "bg-foreground text-background border-foreground"
+                          : "bg-transparent text-foreground border-border hover:border-foreground"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pb-8 sm:pb-12 border-b border-border">
+                <div className="flex items-center justify-between mb-4">
+                  <label className="label text-xs sm:text-sm">Dietary Restrictions</label>
+                  {dietProfile && (
+                    <button
+                      onClick={() => setUseDietProfile(!useDietProfile)}
+                      className={`text-xs font-medium px-3 py-1 border transition-colors ${
+                        useDietProfile
+                          ? "bg-accent text-white border-accent"
+                          : "border-border hover:border-foreground"
+                      }`}
+                    >
+                      {useDietProfile ? "✓ Using Diet Profile" : "Use Diet Profile"}
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {DIETARY_OPTIONS.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => {
+                        if (dietary.includes(option)) {
+                          setDietary(dietary.filter((d) => d !== option));
+                        } else {
+                          setDietary([...dietary, option]);
+                        }
+                      }}
+                      className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium border-2 transition-all ${
+                        dietary.includes(option)
+                          ? "bg-accent text-white border-accent"
+                          : "bg-transparent text-foreground border-border hover:border-foreground"
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+                {dietary.length > 0 && (
+                  <p className="text-xs text-muted mt-3">
+                    Recipe will exclude: {dietary.join(", ")}
+                  </p>
+                )}
+                {useDietProfile && dietProfile && dietProfile.disliked_ingredients?.length > 0 && (
+                  <p className="text-xs text-muted mt-2">
+                    Also avoiding (from profile): {dietProfile.disliked_ingredients.join(", ")}
+                  </p>
+                )}
+                {!dietProfile && (
+                  <p className="text-xs text-muted mt-3">
+                    <Link href="/settings/diet" className="text-accent hover:underline">
+                      Set up your diet profile
+                    </Link>{" "}
+                    to auto-apply preferences
+                  </p>
+                )}
+              </div>
 
               {error && (
                 <p className="text-accent font-medium text-sm sm:text-base">{error}</p>
