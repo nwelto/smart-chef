@@ -51,6 +51,28 @@ export function RecipeDisplay({ recipe, onSave, onNewRecipe, saving, saved }: Re
         </div>
       </div>
 
+      {/* Macros */}
+      {recipe.macros_per_serving && (
+        <div className="grid grid-cols-4 gap-2 sm:gap-4 mb-8 sm:mb-12 p-4 sm:p-6 bg-card border border-border">
+          <div className="text-center">
+            <p className="text-xl sm:text-3xl font-black text-accent">{recipe.macros_per_serving.calories}</p>
+            <p className="text-[10px] sm:text-xs text-muted uppercase tracking-wider">Calories</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xl sm:text-3xl font-black">{recipe.macros_per_serving.protein_g}g</p>
+            <p className="text-[10px] sm:text-xs text-muted uppercase tracking-wider">Protein</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xl sm:text-3xl font-black">{recipe.macros_per_serving.carbs_g}g</p>
+            <p className="text-[10px] sm:text-xs text-muted uppercase tracking-wider">Carbs</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xl sm:text-3xl font-black">{recipe.macros_per_serving.fat_g}g</p>
+            <p className="text-[10px] sm:text-xs text-muted uppercase tracking-wider">Fat</p>
+          </div>
+        </div>
+      )}
+
       <div className="grid md:grid-cols-2 gap-8 sm:gap-12 md:gap-16">
         <div>
           <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Ingredients</h3>
@@ -81,6 +103,21 @@ export function RecipeDisplay({ recipe, onSave, onNewRecipe, saving, saved }: Re
           </ol>
         </div>
       </div>
+
+      {/* Grocery List */}
+      {recipe.grocery_list && recipe.grocery_list.length > 0 && (
+        <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-border">
+          <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Grocery List</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {recipe.grocery_list.map((item, index) => (
+              <div key={index} className="flex items-center gap-2 text-sm sm:text-base">
+                <span className="w-4 h-4 border-2 border-border shrink-0"></span>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-border">
         {onSave && !saved && (
