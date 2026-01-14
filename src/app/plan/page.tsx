@@ -686,7 +686,7 @@ export default function PlanPage() {
             <div className="space-y-4 mb-8">
               <div className="flex justify-between py-3 border-b border-border">
                 <span className="text-muted">Plan Type</span>
-                <span className="font-bold">{selectedPlan?.icon} {selectedPlan?.label}</span>
+                <span className="font-bold">{selectedPlan?.label}</span>
               </div>
               <div className="flex justify-between py-3 border-b border-border">
                 <span className="text-muted">Servings</span>

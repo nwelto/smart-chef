@@ -141,3 +141,56 @@ export interface MealPlan {
   plan_data: MealPlanData;
   created_at: string;
 }
+
+// Meal prep wizard types
+export interface MealPrepFormState {
+  familySize: number;
+  allergies: string[];
+  exclusions: string[];
+  preferredProteins: string[];
+  days: number;
+  meals: string[];
+}
+
+export interface Meal {
+  title: string;
+  description: string;
+  prep_time_minutes: number;
+  cook_time_minutes: number;
+  servings: number;
+  ingredients: Ingredient[];
+  instructions: string[];
+  macros_per_serving?: Macros;
+}
+
+export interface MealPlanResponse {
+  title: string;
+  description?: string;
+  total_prep_time_hours?: number;
+  days: {
+    day: string;
+    meals: {
+      breakfast?: Meal;
+      lunch?: Meal;
+      dinner?: Meal;
+    };
+  }[];
+  grocery_list: { category: string; items: string[] }[];
+  prep_instructions?: string[];
+  storage_tips?: string[];
+}
+
+export interface GroceryItem {
+  item: string;
+  amount: string;
+  category: string;
+}
+
+export interface GroceryCategory {
+  name: string;
+  items: GroceryItem[];
+}
+
+export interface GroceryList {
+  categories: GroceryCategory[];
+}
