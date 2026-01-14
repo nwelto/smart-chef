@@ -112,3 +112,66 @@ export async function generateRecipe(
 
   return JSON.parse(content) as GenerateRecipeResponse;
 }
+
+// Simple meal plan generator for the legacy API route
+export async function generateMealPlan(
+  familySize: number,
+  allergies: string[],
+  exclusions: string[],
+  preferredProteins: string[],
+  days: number,
+  meals: string[]
+) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not configured");
+  }
+
+  const openai = new OpenAI({ apiKey });
+
+  const prompt = `Create a ${days}-day meal plan for ${familySize} people.
+Meals to include each day: ${meals.join(", ")}
+Preferred proteins: ${preferredProteins.length > 0 ? preferredProteins.join(", ") : "Any"}
+Allergies: ${allergies.length > 0 ? allergies.join(", ") : "None"}
+Foods to exclude: ${exclusions.length > 0 ? exclusions.join(", ") : "None"}
+
+RESPOND WITH VALID JSON:
+{
+  "title": "Your ${days}-Day Meal Plan",
+  "days": [
+    {
+      "day": "Day 1",
+      "meals": [
+        {
+          "type": "breakfast",
+          "name": "Meal name",
+          "description": "Brief description",
+          "prep_time_minutes": 10,
+          "cook_time_minutes": 20,
+          "servings": ${familySize},
+          "ingredients": [{ "item": "ingredient", "amount": "1 cup" }],
+          "instructions": ["Step 1", "Step 2"],
+          "macros_per_serving": { "calories": 400, "protein_g": 30, "carbs_g": 35, "fat_g": 15 }
+        }
+      ]
+    }
+  ],
+  "grocery_list": [
+    { "category": "Proteins", "items": ["item 1", "item 2"] }
+  ]
+}`;
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [{ role: "user", content: prompt }],
+    response_format: { type: "json_object" },
+    temperature: 0.7,
+  });
+
+  const content = completion.choices[0].message.content;
+  if (!content) {
+    throw new Error("No response from OpenAI");
+  }
+
+  return JSON.parse(content);
+}
