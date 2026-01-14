@@ -4,18 +4,16 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
 
 interface NavbarProps {
-  userEmail?: string;
+  userEmail?: string; // Kept for backwards compatibility, but ignored
 }
 
-export function Navbar({ userEmail }: NavbarProps) {
+export function Navbar({ userEmail: _propEmail }: NavbarProps) {
   const router = useRouter();
   const supabase = createClient();
-
-  console.log("=== NAVBAR RENDER ===");
-  console.log("Navbar received userEmail:", userEmail);
-  console.log("Navbar isLoggedIn:", !!userEmail);
+  const { userEmail, loading } = useAuth();
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -23,7 +21,8 @@ export function Navbar({ userEmail }: NavbarProps) {
     router.refresh();
   }
 
-  const isLoggedIn = !!userEmail;
+  // Show nothing for auth-dependent items while loading
+  const isLoggedIn = !loading && !!userEmail;
 
   return (
     <nav className="flex items-center justify-between p-2 sm:p-4 md:p-5 border-b border-border">
@@ -55,7 +54,10 @@ export function Navbar({ userEmail }: NavbarProps) {
           Recipes
         </Link>
         
-        {isLoggedIn ? (
+        {loading ? (
+          // Show placeholder while loading to prevent flicker
+          <div className="w-20 h-8" />
+        ) : isLoggedIn ? (
           <>
             <Link href="/meal-plans" className="btn-secondary text-[10px] sm:text-xs px-2 sm:px-3 py-1.5 hidden lg:inline-block">
               My Plans
