@@ -7,7 +7,7 @@ interface GoogleAnalyticsProps {
 }
 
 export function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
-  const gaId = measurementId || process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+  const gaId = measurementId || process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-RLQ4DK17CY";
 
   if (!gaId) {
     return null;
@@ -48,7 +48,7 @@ export function trackEvent(
 
 export function trackPageView(url: string) {
   if (typeof window !== "undefined" && window.gtag) {
-    window.gtag("config", process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID!, {
+    window.gtag("config", process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-RLQ4DK17CY", {
       page_path: url,
     });
   }

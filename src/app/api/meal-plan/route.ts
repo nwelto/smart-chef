@@ -80,8 +80,79 @@ RESPOND WITH VALID JSON:
 
 const PLAN_TYPE_LABELS: Record<string, string> = {
   "weekly-plan": "Weekly meal PLANNING - meals to cook fresh each day throughout the week. Focus on variety and fresh-cooked meals. DO NOT include prep_instructions or total_prep_time_hours since they'll cook fresh daily.",
-  "weekly-prep": "Weekly meal PREP - prepare everything in one cooking session, then grab-and-go all week. Focus on meals that store and reheat well. MUST include detailed prep_instructions for the prep day and total_prep_time_hours.",
+  "weekly-prep": "Weekly meal PREP - BATCH COOKING where you make ONE recipe per meal type that will last the entire week. NOT different recipes each day - the SAME meal repeated.",
 };
+
+// Separate prompt for meal prep - focuses on batch cooking ONE recipe per meal type
+const MEAL_PREP_PROMPT = `You are an experienced home cook focused on MEAL PREP - batch cooking ONE dish per meal type to eat throughout the week.
+
+SERVINGS: {servings}
+DAYS: {days}
+MEAL TYPES TO PREP: {mealTypes}
+PROTEIN PREFERENCES: {proteins}
+FOODS TO EXCLUDE: {exclusions}
+DIETARY RESTRICTIONS: {dietary}
+COOKING STYLE: {cookingStylesDesc}
+
+{specialInstructions}
+
+⚠️ CRITICAL: This is MEAL PREP, not meal planning!
+- Generate exactly ONE recipe per meal type selected
+- If user selected "Lunch" for 5 days → ONE lunch recipe that makes {totalServings} portions
+- If user selected "Breakfast, Lunch, Dinner" → THREE recipes total (1 each), each making {totalServings} portions
+- DO NOT create different meals for different days
+- The user will eat the SAME dish for that meal type all week
+- Focus on meals that store and reheat well (NOT salads that wilt, NOT fried foods that get soggy)
+
+MEAL PREP GUIDELINES:
+- Choose dishes that taste BETTER after sitting (stews, curries, casseroles, grain bowls)
+- Prioritize proteins that reheat well (chicken thighs > breast, ground meat, beans)
+- Include proper storage containers guidance
+- Calculate quantities to feed everyone for ALL {days} days
+
+RESPOND WITH VALID JSON:
+{
+  "title": "Your {days}-Day Meal Prep",
+  "description": "Brief description emphasizing it's batch cooking",
+  "total_prep_time_hours": 2,
+  "meals": [
+    {
+      "meal_type": "lunch",
+      "name": "Chicken Burrito Bowls",
+      "description": "Tex-Mex rice bowls that reheat perfectly",
+      "prep_time_minutes": 20,
+      "cook_time_minutes": 30,
+      "total_portions": {totalServings},
+      "portions_per_day": {portionsPerDay},
+      "days_covered": {days},
+      "ingredients": [
+        { "item": "chicken thighs", "amount": "3 lbs" },
+        { "item": "rice", "amount": "4 cups uncooked" }
+      ],
+      "instructions": [
+        "Season chicken with cumin, chili powder, salt, pepper",
+        "Cook chicken in batches until internal temp 165°F",
+        "Cook rice according to package directions"
+      ],
+      "macros_per_portion": { "calories": 450, "protein_g": 35, "carbs_g": 40, "fat_g": 15 },
+      "storage_instructions": "Store in airtight containers, refrigerate up to 5 days",
+      "reheating_instructions": "Microwave 2-3 minutes or heat in skillet"
+    }
+  ],
+  "grocery_list": [
+    { "category": "Proteins", "items": ["3 lbs chicken thighs"] },
+    { "category": "Grains", "items": ["4 cups rice"] }
+  ],
+  "prep_instructions": [
+    "Start by cooking all proteins - this takes longest",
+    "While proteins cook, prep vegetables and cook grains",
+    "Let everything cool before portioning into containers"
+  ],
+  "storage_tips": [
+    "Label containers with contents and date",
+    "Store up to 5 days refrigerated or freeze extras"
+  ]
+}`;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -142,23 +213,46 @@ export async function POST(request: Request) {
     );
   }
 
-  const specialInstructions = specialInstructionsList.length > 0 
+  const specialInstructions = specialInstructionsList.length > 0
     ? "SPECIAL REQUIREMENTS:\n" + specialInstructionsList.join("\n\n")
     : "";
+
+  // Calculate total servings for meal prep
+  const daysCount = days || 5;
+  const portionsPerDay = adultCount + (childCount * 0.5); // children = half portions
+  const totalServings = Math.ceil(portionsPerDay * daysCount);
 
   try {
     const openai = new OpenAI({ apiKey });
 
-    const prompt = MEAL_PLAN_PROMPT
-      .replace("{planType}", PLAN_TYPE_LABELS[planType] || planType)
-      .replace("{servings}", servingsStr)
-      .replace("{days}", String(days || 5))
-      .replace("{mealTypes}", mealTypesStr)
-      .replace("{proteins}", proteins?.length > 0 ? proteins.join(", ") : "Any")
-      .replace("{exclusions}", exclusions?.length > 0 ? exclusions.join(", ") : "None")
-      .replace("{dietary}", dietary?.length > 0 ? dietary.join(", ") : "None")
-      .replace("{cookingStylesDesc}", cookingStylesDesc)
-      .replace("{specialInstructions}", specialInstructions);
+    let prompt: string;
+
+    if (planType === "weekly-prep") {
+      // Use meal prep prompt - ONE recipe per meal type
+      prompt = MEAL_PREP_PROMPT
+        .replace("{servings}", servingsStr)
+        .replace(/{days}/g, String(daysCount))
+        .replace("{mealTypes}", mealTypesStr)
+        .replace("{proteins}", proteins?.length > 0 ? proteins.join(", ") : "Any")
+        .replace("{exclusions}", exclusions?.length > 0 ? exclusions.join(", ") : "None")
+        .replace("{dietary}", dietary?.length > 0 ? dietary.join(", ") : "None")
+        .replace("{cookingStylesDesc}", cookingStylesDesc)
+        .replace("{specialInstructions}", specialInstructions)
+        .replace(/{totalServings}/g, String(totalServings))
+        .replace(/{portionsPerDay}/g, String(Math.ceil(portionsPerDay)));
+    } else {
+      // Use meal plan prompt - different meals each day
+      prompt = MEAL_PLAN_PROMPT
+        .replace("{planType}", PLAN_TYPE_LABELS[planType] || planType)
+        .replace("{servings}", servingsStr)
+        .replace("{days}", String(daysCount))
+        .replace("{mealTypes}", mealTypesStr)
+        .replace("{proteins}", proteins?.length > 0 ? proteins.join(", ") : "Any")
+        .replace("{exclusions}", exclusions?.length > 0 ? exclusions.join(", ") : "None")
+        .replace("{dietary}", dietary?.length > 0 ? dietary.join(", ") : "None")
+        .replace("{cookingStylesDesc}", cookingStylesDesc)
+        .replace("{specialInstructions}", specialInstructions);
+    }
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -172,7 +266,16 @@ export async function POST(request: Request) {
       throw new Error("No response");
     }
 
-    return NextResponse.json(JSON.parse(content));
+    const result = JSON.parse(content);
+
+    // Add metadata for meal prep to help UI display correctly
+    if (planType === "weekly-prep") {
+      result.is_meal_prep = true;
+      result.days_count = daysCount;
+      result.portions_per_day = Math.ceil(portionsPerDay);
+    }
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Meal plan generation error:", error);
     return NextResponse.json({ error: "Failed to generate meal plan" }, { status: 500 });

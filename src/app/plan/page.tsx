@@ -57,17 +57,40 @@ interface Meal {
   macros_per_adult_serving?: { calories: number; protein_g: number; carbs_g: number; fat_g: number };
 }
 
+// Meal prep specific meal format
+interface MealPrepMeal {
+  meal_type: string;
+  name: string;
+  description: string;
+  prep_time_minutes: number;
+  cook_time_minutes?: number;
+  total_portions: number;
+  portions_per_day: number;
+  days_covered: number;
+  ingredients?: MealIngredient[];
+  instructions?: string[];
+  macros_per_portion?: { calories: number; protein_g: number; carbs_g: number; fat_g: number };
+  storage_instructions?: string;
+  reheating_instructions?: string;
+}
+
 interface MealPlanResult {
   title: string;
   description: string;
-  days: {
+  // For weekly-plan: array of days with meals
+  days?: {
     day: string;
     meals: Meal[];
   }[];
+  // For weekly-prep: array of meals (one per type)
+  meals?: MealPrepMeal[];
+  is_meal_prep?: boolean;
+  days_count?: number;
+  portions_per_day?: number;
   grocery_list: { category: string; items: string[] }[];
-  prep_instructions: string[];
-  storage_tips: string[];
-  total_prep_time_hours: number;
+  prep_instructions?: string[];
+  storage_tips?: string[];
+  total_prep_time_hours?: number;
 }
 
 export default function PlanPage() {
@@ -103,6 +126,8 @@ export default function PlanPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [expandedMeals, setExpandedMeals] = useState<Set<string>>(new Set());
+  const [assigningToCalendar, setAssigningToCalendar] = useState(false);
+  const [assignedToCalendar, setAssignedToCalendar] = useState(false);
 
   function toggleMeal(mealKey: string) {
     setExpandedMeals(prev => {
@@ -210,12 +235,20 @@ export default function PlanPage() {
         days,
         meals_per_day: selectedMeals.length,
         total_prep_time_hours: result.total_prep_time_hours,
-        plan_data: {
-          days: result.days,
-          grocery_list: result.grocery_list,
-          prep_instructions: result.prep_instructions,
-          storage_tips: result.storage_tips,
-        },
+        plan_data: result.is_meal_prep
+          ? {
+              meals: result.meals,
+              grocery_list: result.grocery_list,
+              prep_instructions: result.prep_instructions,
+              storage_tips: result.storage_tips,
+              is_meal_prep: true,
+            }
+          : {
+              days: result.days,
+              grocery_list: result.grocery_list,
+              prep_instructions: result.prep_instructions,
+              storage_tips: result.storage_tips,
+            },
       }),
     });
 
@@ -223,6 +256,73 @@ export default function PlanPage() {
       setSaved(true);
     }
     setSaving(false);
+  }
+
+  async function handleAssignToCalendar() {
+    if (!result) return;
+    setAssigningToCalendar(true);
+
+    try {
+      // Get the current date to start assigning meals
+      const startDate = new Date();
+      // Start from tomorrow
+      startDate.setDate(startDate.getDate() + 1);
+
+      const scheduledMeals: { date: string; meal_type: string; custom_meal: string }[] = [];
+
+      if (result.is_meal_prep && result.meals) {
+        // For meal prep: assign the same meal for each day
+        for (let dayOffset = 0; dayOffset < days; dayOffset++) {
+          const date = new Date(startDate);
+          date.setDate(date.getDate() + dayOffset);
+          const dateStr = date.toISOString().split("T")[0];
+
+          for (const meal of result.meals) {
+            scheduledMeals.push({
+              date: dateStr,
+              meal_type: meal.meal_type.toLowerCase(),
+              custom_meal: meal.name,
+            });
+          }
+        }
+      } else if (result.days) {
+        // For meal plan: assign different meals each day
+        for (let dayOffset = 0; dayOffset < result.days.length; dayOffset++) {
+          const date = new Date(startDate);
+          date.setDate(date.getDate() + dayOffset);
+          const dateStr = date.toISOString().split("T")[0];
+          const dayMeals = result.days[dayOffset].meals;
+
+          for (const meal of dayMeals) {
+            // Try to determine meal type from the data or use a default
+            const mealTypes = ["breakfast", "lunch", "dinner"];
+            const mealIndex = dayMeals.indexOf(meal);
+            const mealType = selectedMeals[mealIndex] || mealTypes[mealIndex] || "dinner";
+
+            scheduledMeals.push({
+              date: dateStr,
+              meal_type: mealType,
+              custom_meal: meal.name,
+            });
+          }
+        }
+      }
+
+      // Send all meals to the calendar API
+      for (const meal of scheduledMeals) {
+        await fetch("/api/scheduled-meals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(meal),
+        });
+      }
+
+      setAssignedToCalendar(true);
+    } catch (error) {
+      console.error("Failed to assign to calendar:", error);
+    }
+
+    setAssigningToCalendar(false);
   }
 
   function toggleProtein(p: string) {
@@ -827,118 +927,248 @@ export default function PlanPage() {
               </div>
             </div>
 
-            {/* Daily Meals */}
+            {/* Meals Display - Different format for meal prep vs meal plan */}
             <div className="mb-12">
-              <h2 className="text-xl sm:text-2xl font-bold mb-6">📅 Your Meal Plan</h2>
-              <div className="space-y-6">
-                {result.days.map((day, dayIndex) => (
-                  <div key={day.day} className="border border-border p-4 sm:p-6">
-                    <h3 className="font-bold text-lg mb-4">{day.day}</h3>
-                    <div className="space-y-4">
-                      {day.meals.map((meal, mealIndex) => {
-                        const mealKey = `${dayIndex}-${mealIndex}`;
-                        const isExpanded = expandedMeals.has(mealKey);
-                        const hasRecipe = meal.ingredients && meal.ingredients.length > 0;
+              {result.is_meal_prep && result.meals ? (
+                <>
+                  {/* Meal Prep Format: One recipe per meal type */}
+                  <h2 className="text-xl sm:text-2xl font-bold mb-2">🍱 Your Meal Prep Recipes</h2>
+                  <p className="text-muted text-sm mb-6">
+                    {result.meals.length} recipe{result.meals.length > 1 ? 's' : ''} to prep for {days} days
+                  </p>
+                  <div className="space-y-6">
+                    {result.meals.map((meal, mealIndex) => {
+                      const mealKey = `prep-${mealIndex}`;
+                      const isExpanded = expandedMeals.has(mealKey);
+                      const hasRecipe = meal.ingredients && meal.ingredients.length > 0;
 
-                        return (
-                          <div key={mealIndex} className="border border-border/50">
-                            {/* Meal Header */}
-                            <button
-                              onClick={() => hasRecipe && toggleMeal(mealKey)}
-                              className={`w-full text-left p-4 ${hasRecipe ? "cursor-pointer hover:bg-card/50" : ""}`}
-                            >
-                              <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <p className="font-bold">{meal.name}</p>
-                                    {hasRecipe && (
-                                      <span className="text-xs text-accent">
-                                        {isExpanded ? "▼" : "▶"} Recipe
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-sm text-muted">{meal.description}</p>
-                                  <div className="flex flex-wrap gap-x-3 text-xs text-muted mt-1">
-                                    <span>Prep: {meal.prep_time_minutes} min</span>
-                                    {meal.cook_time_minutes && <span>Cook: {meal.cook_time_minutes} min</span>}
-                                    {(meal.adult_servings || meal.child_servings) && (
-                                      <span className="text-accent">
-                                        Serves: {meal.adult_servings || 0} adult{(meal.adult_servings || 0) !== 1 ? 's' : ''}
-                                        {meal.child_servings ? ` + ${meal.child_servings} child${meal.child_servings !== 1 ? 'ren' : ''}` : ''}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-[10px] text-muted mb-1">per adult serving</p>
-                                  <div className="flex gap-3 text-xs text-center">
-                                    <div>
-                                      <p className="font-bold text-accent">{meal.macros_per_adult_serving?.calories || meal.macros?.calories || 0}</p>
-                                      <p className="text-muted">cal</p>
-                                    </div>
-                                    <div>
-                                      <p className="font-bold">{meal.macros_per_adult_serving?.protein_g || meal.macros?.protein_g || 0}g</p>
-                                      <p className="text-muted">pro</p>
-                                    </div>
-                                    <div>
-                                      <p className="font-bold">{meal.macros_per_adult_serving?.carbs_g || meal.macros?.carbs_g || 0}g</p>
-                                      <p className="text-muted">carb</p>
-                                    </div>
-                                    <div>
-                                      <p className="font-bold">{meal.macros_per_adult_serving?.fat_g || meal.macros?.fat_g || 0}g</p>
-                                      <p className="text-muted">fat</p>
-                                    </div>
-                                  </div>
-                                  {children > 0 && (
-                                    <p className="text-[10px] text-muted mt-1">Children: half portions</p>
+                      return (
+                        <div key={mealIndex} className="border border-border">
+                          {/* Meal Header */}
+                          <button
+                            onClick={() => hasRecipe && toggleMeal(mealKey)}
+                            className={`w-full text-left p-4 sm:p-6 ${hasRecipe ? "cursor-pointer hover:bg-card/50" : ""}`}
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="px-2 py-1 bg-accent text-white text-xs font-bold uppercase">
+                                    {meal.meal_type}
+                                  </span>
+                                  {hasRecipe && (
+                                    <span className="text-xs text-accent">
+                                      {isExpanded ? "▼" : "▶"} Full Recipe
+                                    </span>
                                   )}
                                 </div>
+                                <p className="font-bold text-lg">{meal.name}</p>
+                                <p className="text-sm text-muted">{meal.description}</p>
+                                <div className="flex flex-wrap gap-x-4 text-xs mt-2">
+                                  <span className="text-muted">Prep: {meal.prep_time_minutes} min</span>
+                                  {meal.cook_time_minutes && <span className="text-muted">Cook: {meal.cook_time_minutes} min</span>}
+                                  <span className="text-accent font-bold">
+                                    Makes {meal.total_portions} portions ({meal.portions_per_day}/day × {meal.days_covered} days)
+                                  </span>
+                                </div>
                               </div>
-                            </button>
-
-                            {/* Expanded Recipe */}
-                            {isExpanded && hasRecipe && (
-                              <div className="border-t border-border/50 p-4 bg-card/30">
-                                <div className="grid md:grid-cols-2 gap-6">
-                                  {/* Ingredients */}
+                              <div className="text-right">
+                                <p className="text-[10px] text-muted mb-1">per portion</p>
+                                <div className="flex gap-3 text-xs text-center">
                                   <div>
-                                    <h4 className="font-bold mb-3">Ingredients</h4>
-                                    <ul className="space-y-1">
-                                      {(meal.ingredients || []).map((ing, i) => (
-                                        <li key={i} className="text-sm flex gap-2">
-                                          <span className="text-accent font-medium">{ing.amount}</span>
-                                          <span>{ing.item}</span>
+                                    <p className="font-bold text-accent">{meal.macros_per_portion?.calories || 0}</p>
+                                    <p className="text-muted">cal</p>
+                                  </div>
+                                  <div>
+                                    <p className="font-bold">{meal.macros_per_portion?.protein_g || 0}g</p>
+                                    <p className="text-muted">pro</p>
+                                  </div>
+                                  <div>
+                                    <p className="font-bold">{meal.macros_per_portion?.carbs_g || 0}g</p>
+                                    <p className="text-muted">carb</p>
+                                  </div>
+                                  <div>
+                                    <p className="font-bold">{meal.macros_per_portion?.fat_g || 0}g</p>
+                                    <p className="text-muted">fat</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+
+                          {/* Expanded Recipe */}
+                          {isExpanded && hasRecipe && (
+                            <div className="border-t border-border/50 p-4 sm:p-6 bg-card/30">
+                              <div className="grid md:grid-cols-2 gap-6">
+                                {/* Ingredients */}
+                                <div>
+                                  <h4 className="font-bold mb-3">Ingredients</h4>
+                                  <ul className="space-y-1">
+                                    {(meal.ingredients || []).map((ing, i) => (
+                                      <li key={i} className="text-sm flex gap-2">
+                                        <span className="text-accent font-medium">{ing.amount}</span>
+                                        <span>{ing.item}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+
+                                {/* Instructions */}
+                                {meal.instructions && meal.instructions.length > 0 && (
+                                  <div>
+                                    <h4 className="font-bold mb-3">Instructions</h4>
+                                    <ol className="space-y-2">
+                                      {meal.instructions.map((instrStep, i) => (
+                                        <li key={i} className="text-sm flex gap-3">
+                                          <span className="w-5 h-5 bg-foreground text-background text-xs font-bold flex items-center justify-center shrink-0">
+                                            {i + 1}
+                                          </span>
+                                          <span>{instrStep}</span>
                                         </li>
                                       ))}
-                                    </ul>
+                                    </ol>
                                   </div>
+                                )}
+                              </div>
 
-                                  {/* Instructions */}
-                                  {meal.instructions && meal.instructions.length > 0 && (
+                              {/* Storage & Reheating */}
+                              {(meal.storage_instructions || meal.reheating_instructions) && (
+                                <div className="mt-6 pt-4 border-t border-border/50 grid sm:grid-cols-2 gap-4">
+                                  {meal.storage_instructions && (
                                     <div>
-                                      <h4 className="font-bold mb-3">Instructions</h4>
-                                      <ol className="space-y-2">
-                                        {meal.instructions.map((instrStep, i) => (
-                                          <li key={i} className="text-sm flex gap-3">
-                                            <span className="w-5 h-5 bg-foreground text-background text-xs font-bold flex items-center justify-center shrink-0">
-                                              {i + 1}
-                                            </span>
-                                            <span>{instrStep}</span>
-                                          </li>
-                                        ))}
-                                      </ol>
+                                      <h4 className="font-bold text-sm mb-1">📦 Storage</h4>
+                                      <p className="text-sm text-muted">{meal.storage_instructions}</p>
+                                    </div>
+                                  )}
+                                  {meal.reheating_instructions && (
+                                    <div>
+                                      <h4 className="font-bold text-sm mb-1">🔥 Reheating</h4>
+                                      <p className="text-sm text-muted">{meal.reheating_instructions}</p>
                                     </div>
                                   )}
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : result.days ? (
+                <>
+                  {/* Meal Plan Format: Different meals each day */}
+                  <h2 className="text-xl sm:text-2xl font-bold mb-6">📅 Your Meal Plan</h2>
+                  <div className="space-y-6">
+                    {result.days.map((day, dayIndex) => (
+                      <div key={day.day} className="border border-border p-4 sm:p-6">
+                        <h3 className="font-bold text-lg mb-4">{day.day}</h3>
+                        <div className="space-y-4">
+                          {day.meals.map((meal, mealIndex) => {
+                            const mealKey = `${dayIndex}-${mealIndex}`;
+                            const isExpanded = expandedMeals.has(mealKey);
+                            const hasRecipe = meal.ingredients && meal.ingredients.length > 0;
+
+                            return (
+                              <div key={mealIndex} className="border border-border/50">
+                                {/* Meal Header */}
+                                <button
+                                  onClick={() => hasRecipe && toggleMeal(mealKey)}
+                                  className={`w-full text-left p-4 ${hasRecipe ? "cursor-pointer hover:bg-card/50" : ""}`}
+                                >
+                                  <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <p className="font-bold">{meal.name}</p>
+                                        {hasRecipe && (
+                                          <span className="text-xs text-accent">
+                                            {isExpanded ? "▼" : "▶"} Recipe
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-sm text-muted">{meal.description}</p>
+                                      <div className="flex flex-wrap gap-x-3 text-xs text-muted mt-1">
+                                        <span>Prep: {meal.prep_time_minutes} min</span>
+                                        {meal.cook_time_minutes && <span>Cook: {meal.cook_time_minutes} min</span>}
+                                        {(meal.adult_servings || meal.child_servings) && (
+                                          <span className="text-accent">
+                                            Serves: {meal.adult_servings || 0} adult{(meal.adult_servings || 0) !== 1 ? 's' : ''}
+                                            {meal.child_servings ? ` + ${meal.child_servings} child${meal.child_servings !== 1 ? 'ren' : ''}` : ''}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-[10px] text-muted mb-1">per adult serving</p>
+                                      <div className="flex gap-3 text-xs text-center">
+                                        <div>
+                                          <p className="font-bold text-accent">{meal.macros_per_adult_serving?.calories || meal.macros?.calories || 0}</p>
+                                          <p className="text-muted">cal</p>
+                                        </div>
+                                        <div>
+                                          <p className="font-bold">{meal.macros_per_adult_serving?.protein_g || meal.macros?.protein_g || 0}g</p>
+                                          <p className="text-muted">pro</p>
+                                        </div>
+                                        <div>
+                                          <p className="font-bold">{meal.macros_per_adult_serving?.carbs_g || meal.macros?.carbs_g || 0}g</p>
+                                          <p className="text-muted">carb</p>
+                                        </div>
+                                        <div>
+                                          <p className="font-bold">{meal.macros_per_adult_serving?.fat_g || meal.macros?.fat_g || 0}g</p>
+                                          <p className="text-muted">fat</p>
+                                        </div>
+                                      </div>
+                                      {children > 0 && (
+                                        <p className="text-[10px] text-muted mt-1">Children: half portions</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </button>
+
+                                {/* Expanded Recipe */}
+                                {isExpanded && hasRecipe && (
+                                  <div className="border-t border-border/50 p-4 bg-card/30">
+                                    <div className="grid md:grid-cols-2 gap-6">
+                                      {/* Ingredients */}
+                                      <div>
+                                        <h4 className="font-bold mb-3">Ingredients</h4>
+                                        <ul className="space-y-1">
+                                          {(meal.ingredients || []).map((ing, i) => (
+                                            <li key={i} className="text-sm flex gap-2">
+                                              <span className="text-accent font-medium">{ing.amount}</span>
+                                              <span>{ing.item}</span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+
+                                      {/* Instructions */}
+                                      {meal.instructions && meal.instructions.length > 0 && (
+                                        <div>
+                                          <h4 className="font-bold mb-3">Instructions</h4>
+                                          <ol className="space-y-2">
+                                            {meal.instructions.map((instrStep, i) => (
+                                              <li key={i} className="text-sm flex gap-3">
+                                                <span className="w-5 h-5 bg-foreground text-background text-xs font-bold flex items-center justify-center shrink-0">
+                                                  {i + 1}
+                                                </span>
+                                                <span>{instrStep}</span>
+                                              </li>
+                                            ))}
+                                          </ol>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </div>
 
             {/* Prep Instructions - only for weekly prep */}
@@ -960,17 +1190,19 @@ export default function PlanPage() {
             )}
 
             {/* Storage Tips */}
-            <div className="mb-12 p-6 bg-card border border-border">
-              <h2 className="text-xl sm:text-2xl font-bold mb-4">💡 Storage Tips</h2>
-              <ul className="space-y-2">
-                {result.storage_tips.map((tip, i) => (
-                  <li key={i} className="flex gap-2 text-sm">
-                    <span className="text-accent">•</span>
-                    {tip}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {result.storage_tips && result.storage_tips.length > 0 && (
+              <div className="mb-12 p-6 bg-card border border-border">
+                <h2 className="text-xl sm:text-2xl font-bold mb-4">💡 Storage Tips</h2>
+                <ul className="space-y-2">
+                  {result.storage_tips.map((tip, i) => (
+                    <li key={i} className="flex gap-2 text-sm">
+                      <span className="text-accent">•</span>
+                      {tip}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-4">
               <button
@@ -981,10 +1213,18 @@ export default function PlanPage() {
                 {saving ? "Saving..." : saved ? "✓ Saved to My Meal Plans" : "Save Plan"}
               </button>
               <button
+                onClick={handleAssignToCalendar}
+                disabled={assigningToCalendar || assignedToCalendar}
+                className={`btn-secondary ${assignedToCalendar ? "bg-blue-600 border-blue-600 text-white" : ""}`}
+              >
+                {assigningToCalendar ? "Assigning..." : assignedToCalendar ? "✓ Added to Calendar" : "📅 Assign to Calendar"}
+              </button>
+              <button
                 onClick={() => {
                   setStep(1);
                   setResult(null);
                   setSaved(false);
+                  setAssignedToCalendar(false);
                 }}
                 className="btn-secondary"
               >
